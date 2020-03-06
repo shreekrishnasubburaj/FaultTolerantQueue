@@ -1,0 +1,19 @@
+
+Transport layer
+sendOperation(data, GS , dest)
+sendNACK(GS)
+receiveOperation()
+
+Middleware
+
+
+
+
+Application layer
+nt qCreate (int label); //If there exists a queue associated with label, return the
+int qDestroy(int queue_id); //deletes a queue
+int qId (int label); //returns queue id of the queue associated with label if one exists
+void qPush (int queue_id, int item); // enters item in the queue
+int qPop (int queue_id); // removes an item from the queue and returns it
+int qTop (int queue_id); // returns the value of the first element in the queue
+int qSize (int queue_id); // returns the number of items in the queue
