@@ -36,7 +36,6 @@ PORT = int(sys.argv[1])
 def Main(): 
     global PORT
     client = socket.socket(socket.AF_INET,socket.SOCK_DGRAM) 
-    time.sleep(2)
     client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     for l in msgList:
         message = l
