@@ -44,7 +44,7 @@ def Main():
         client.sendto(pickle.dumps(message), (HOST, PORT%3+6001)) 
         data = client.recv(1024) 
         print('Received from the server :', pickle.loads(data)) 
-        #time.sleep(1)
+        #time.sleep(2)
     client.close() 
   
 if __name__ == '__main__': 

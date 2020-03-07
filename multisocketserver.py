@@ -9,7 +9,10 @@ import sys
 import random
 import time
 import heapq
-PORT = int(sys.argv[1])
+if len(sys.argv) < 2:
+    print("Usage: python multisocketserver.py SERVER_NUMBER")
+    sys.exit()
+PORT = 5000+int(sys.argv[1])
 HOST = "127.0.0.1"
 #print(PORT, type(PORT))
 idCounter = 0 
@@ -28,12 +31,12 @@ def performOperation(msg):
     if opt == 0: #qCreate
         label = msg.OP[1]
         if label in labelIdMap:
-            print(FTQueue[labelIdMap[label]])
+            #print(FTQueue[labelIdMap[label]])
             return labelIdMap[label]
         else:
             labelIdMap[label] = idCounter
             FTQueue[idCounter] = []
-            print(FTQueue[labelIdMap[label]])
+            #print(FTQueue[labelIdMap[label]])
             idCounter+=1
             return idCounter-1
     
@@ -49,7 +52,7 @@ def performOperation(msg):
     elif opt == 2: #qId
         label = msg.OP[1]
         if label in labelIdMap:
-            print(FTQueue[labelIdMap[label]])
+            #print(FTQueue[labelIdMap[label]])
             return labelIdMap[label]
         else:
             return -1
@@ -73,13 +76,13 @@ def performOperation(msg):
         id = msg.OP[1]
         if id in FTQueue:
             if FTQueue[id]:
-                print(FTQueue[id])
+                #print(FTQueue[id])
                 return FTQueue[id][0]
 
     elif opt == 6: #qSize
         id = msg.OP[1]
         if id in FTQueue:
-            print(FTQueue[id])
+            #print(FTQueue[id])
             return len(FTQueue[id])
 
 
@@ -115,7 +118,7 @@ def broadcast(msg=dummy):
 # thread Client function 
 def thread6000(): 
     CHOST = "127.0.0.1" 
-    CPORT = int(sys.argv[2]) 
+    CPORT = 6000+int(sys.argv[1]) 
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     server.bind((CHOST, CPORT)) 
@@ -172,11 +175,12 @@ def Main():
     t6000.start()
     t5000 = threading.Thread(target=thread5000, args=())
     t5000.start()
+    totalorder = []
     while True:
         if buffer1:
             nextMsg = heapq.nlargest(1, buffer1)[0]
             buffer1.remove(nextMsg)
-            print(nextMsg) 
+            #print(nextMsg) 
             if nextMsg.GS==-2: #NACK
                 for msg in buffer2:
                     if msg.GS==nextMsg.GSReq:
@@ -192,9 +196,12 @@ def Main():
                 if nextMsg.GS<=GS: #duplicate
                     continue
                 elif nextMsg.GS==GS+1: #in-order
+                    totalorder.append([GS+1, nextMsg.OP])
                     result = -2
                     result = performOperation(nextMsg)
                     GS+=1
+                    for l in totalorder:
+                        print(l)
                     if (nextMsg.mId%n)+1==pid%10:
 		        #Send result to client
                         addr = nextMsg.clAddr.split(":")[0]
