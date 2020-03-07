@@ -100,7 +100,7 @@ class Message(object):
         return f'Message- \n\tGS:{self.GS}, \n\tmId:{self.mId}, \n\tOP:{self.OP}, \n\tclAddr:{self.clAddr}, \n\tsendAddr:{self.sendAddr}'
 
     def __lt__(self, other):
-        return self.GS < other.GS 
+        return (self.GS < other.GS and self.GS > 0 and other.GS > 0)
 
 dummy = Message(-1, -1, 1234, [0, 1, 2], "127.0.0.1:6000", "127.0.0.1:5000")
 sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
@@ -178,9 +178,8 @@ def Main():
     totalorder = []
     while True:
         if buffer1:
-            nextMsg = heapq.nlargest(1, buffer1)[0]
-            buffer1.remove(nextMsg)
-            #print(nextMsg) 
+            nextMsg = heapq.heappop(buffer1)
+            print(nextMsg) 
             if nextMsg.GS==-2: #NACK
                 for msg in buffer2:
                     if msg.GS==nextMsg.GSReq:
