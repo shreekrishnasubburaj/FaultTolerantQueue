@@ -38,13 +38,20 @@ def Main():
     client = socket.socket(socket.AF_INET,socket.SOCK_DGRAM) 
     time.sleep(2)
     client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    for l in msgList:
-        message = l
-        PORT += 1
-        client.sendto(pickle.dumps(message), (HOST, PORT%3+6001)) 
-        data = client.recv(1024) 
-        print('Received from the server :', pickle.loads(data)) 
-        #time.sleep(2)
+    client.sendto(pickle.dumps(dummycreate), (HOST, 6001))
+    data = client.recv(1024) 
+    print('Received from the server :', pickle.loads(data)) 
+    time.sleep(10)
+    client.sendto(pickle.dumps(dummypush1), (HOST, 6003))
+    data = client.recv(1024) 
+    print('Received from the server :', pickle.loads(data)) 
+    #for l in msgList:
+    #    message = l
+    #    PORT += 1
+    #    client.sendto(pickle.dumps(message), (HOST, PORT%3+6001)) 
+    #    data = client.recv(1024) 
+    #    print('Received from the server :', pickle.loads(data)) 
+    #    #time.sleep(2)
     client.close() 
   
 if __name__ == '__main__': 

@@ -208,8 +208,14 @@ def Main():
                         sock.sendto(pickle.dumps(result), (addr, port))
                     while buffer3 and buffer3[0].GS==GS+1:
                         nextMsg = heapq.heappop(buffer3)
+                        print("**********")
+                        print(nextMsg)
+                        print("**********")
+                        totalorder.append([GS+1, nextMsg.OP])
                         performOperation(nextMsg)
                         GS+=1
+                        for l in totalorder:
+                            print(l)
                 else: #out-of-order
                     heapq.heappush(buffer3, nextMsg)
                     #create NAC and send to seq
