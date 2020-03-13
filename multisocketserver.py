@@ -104,7 +104,7 @@ class Message(object):
 
 dummy = Message(-1, -1, 1234, [0, 1, 2], "127.0.0.1:6000", "127.0.0.1:5000")
 sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+# sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
 
 def sendOperation(addr="127.0.0.1", port=5000, msg=dummy):
     sock.sendto(pickle.dumps(msg), (addr, port))
@@ -120,7 +120,7 @@ def thread6000():
     CHOST = "127.0.0.1" 
     CPORT = 6000+int(sys.argv[1]) 
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    # server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     server.bind((CHOST, CPORT)) 
     print("Server port open at", CPORT) 
     while True: 
@@ -136,7 +136,7 @@ def thread6000():
             msg = pickle.loads(data)
             msg.GS = -1
             msg.Req = -1
-            msg.mId = mid
+            msg.mId = msg.mId
             msg.clAddr = str(str(addr[0])+":"+str(addr[1]))
             msg.sendAddr = str(str(HOST)+":"+str(PORT))
             broadcast(msg)
@@ -148,7 +148,7 @@ def thread6000():
 
 def thread5000(): 
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    # server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     server.bind((HOST, PORT)) 
     print("Server port open at", PORT) 
     while True:

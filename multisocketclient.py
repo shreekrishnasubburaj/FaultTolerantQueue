@@ -13,15 +13,15 @@ class Message(object):
     def __lt__(self, other):
         return self.GS < other.GS
 
-dummycreate = Message(-1, -1, 1234, [0, 1], "127.0.0.1", "127.0.0.1")
-dummygetid = Message(-1, -1, 1234, [2, 1], "127.0.0.1", "127.0.0.1")
-dummypush1 = Message(-1, -1, 1234, [3, 0, 1], "127.0.0.1", "127.0.0.1")
-dummypush2 = Message(-1, -1, 1234, [3, 0, 2], "127.0.0.1", "127.0.0.1")
-dummypush3 = Message(-1, -1, 1234, [3, 0, 3], "127.0.0.1", "127.0.0.1")
-dummysize = Message(-1, -1, 1234, [6, 0], "127.0.0.1", "127.0.0.1")
-dummypop = Message(-1, -1, 1234, [4, 0], "127.0.0.1", "127.0.0.1")
-dummytop = Message(-1, -1, 1234, [5, 0], "127.0.0.1", "127.0.0.1")
-dummydestroy = Message(-1, -1, 1234, [1, 0], "127.0.0.1", "127.0.0.1")
+dummycreate = Message(-1, -1, 123, [0, 1], "127.0.0.1", "127.0.0.1")
+dummygetid = Message(-1, -1, 2211, [2, 1], "127.0.0.1", "127.0.0.1")
+dummypush1 = Message(-1, -1, 544, [3, 0, 1], "127.0.0.1", "127.0.0.1")
+dummypush2 = Message(-1, -1, 3431, [3, 0, 2], "127.0.0.1", "127.0.0.1")
+dummypush3 = Message(-1, -1, 32, [3, 0, 3], "127.0.0.1", "127.0.0.1")
+dummysize = Message(-1, -1, 2330, [6, 0], "127.0.0.1", "127.0.0.1")
+dummypop = Message(-1, -1, 71, [4, 0], "127.0.0.1", "127.0.0.1")
+dummytop = Message(-1, -1, 6761, [5, 0], "127.0.0.1", "127.0.0.1")
+dummydestroy = Message(-1, -1, 891, [1, 0], "127.0.0.1", "127.0.0.1")
 msgList = [dummycreate, dummygetid, dummypush1, dummypush2,
 dummypush3, dummysize, dummypop, dummytop]
 
@@ -37,21 +37,21 @@ def Main():
     global PORT
     client = socket.socket(socket.AF_INET,socket.SOCK_DGRAM) 
     time.sleep(2)
-    client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    client.sendto(pickle.dumps(dummycreate), (HOST, 6001))
-    data = client.recv(1024) 
-    print('Received from the server :', pickle.loads(data)) 
-    time.sleep(10)
-    client.sendto(pickle.dumps(dummypush1), (HOST, 6003))
-    data = client.recv(1024) 
-    print('Received from the server :', pickle.loads(data)) 
-    #for l in msgList:
-    #    message = l
-    #    PORT += 1
-    #    client.sendto(pickle.dumps(message), (HOST, PORT%3+6001)) 
-    #    data = client.recv(1024) 
-    #    print('Received from the server :', pickle.loads(data)) 
-    #    #time.sleep(2)
+    # client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    # client.sendto(pickle.dumps(dummycreate), (HOST, 6001))
+    # data = client.recv(1024) 
+    # print('Received from the server :', pickle.loads(data)) 
+    # time.sleep(10)
+    # client.sendto(pickle.dumps(dummypush1), (HOST, 6003))
+    # data = client.recv(1024) 
+    # print('Received from the server :', pickle.loads(data)) 
+    for l in msgList:
+       message = l
+       PORT += 1
+       client.sendto(pickle.dumps(message), (HOST, PORT%3+6001)) 
+       data = client.recv(1024) 
+       print('Received from the server :', pickle.loads(data)) 
+       #time.sleep(2)
     client.close() 
   
 if __name__ == '__main__': 
