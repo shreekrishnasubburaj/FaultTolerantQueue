@@ -12,6 +12,12 @@ import heapq
 if len(sys.argv) < 2:
     print("Usage: python multisocketserver.py SERVER_NUMBER")
     sys.exit()
+
+TRAN =  0
+procSetOld = set()
+procSetNew = set()
+
+
 PORT = 5000+int(sys.argv[1])
 HOST = "127.0.0.1"
 #print(PORT, type(PORT))
@@ -109,11 +115,46 @@ sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 def sendOperation(addr="127.0.0.1", port=5000, msg=dummy):
     sock.sendto(pickle.dumps(msg), (addr, port))
 
-def broadcast(msg=dummy):
+def broadcast(msg=dummy, level=5000):
     for i in range(1,n+1):
-        port = 5000+i
+        port = level+i
         addr = "127.0.0.1"
         sendOperation(addr, port, msg)
+
+def thread7000(): #transition logic
+    if TRAN==0:
+        if procSetOld!=procSetNew:
+            transitionMessage = Message(-2, -1, -1, -1, null, str(HOST)+":"+str(aliveSenderPORT))
+            broadcast(transitionMessage, level=9000)
+        else:
+            time.sleep(2)
+    else:
+        time.sleep(2)
+        #remaining transition logic
+
+def thread8000(): #send alive messages
+    aliveSenderPORT = 8000+int(sys.argv[1]) 
+    while True:
+        aliveMessage = Message(-1, -1, -1, -1, null, str(HOST)+":"+str(aliveSenderPORT))
+        broadcast(aliveMessage, level=9000)
+        time.sleep(.2) #send alive every 200 milliseconds
+
+def thread9000(): #receive alive/transition message
+    aliveReceiverPORT = 9000+int(sys.argv[1]) 
+    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+    # server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    server.bind((HOST, aliveReceiverPORT)) 
+    print("Listening for Alive Messages\n") 
+    while True:
+        data, addr = server.recvfrom(1024) 
+        msg = pickle.loads(data)
+        if msg.GS==-1: #alive message
+            sender = msg.sendAddr
+            procSetNew.add(int(sender.split(":")[1])%10)
+        else:   #transition message
+            TRAN = 1
+    server.close() 
+
 
 # thread Client function 
 def thread6000(): 
