@@ -13,13 +13,34 @@ if len(sys.argv) < 2:
     print("Usage: python multisocketserver.py SERVER_NUMBER")
     sys.exit()
 
+class procSetVal(object):
+    def __init__(self, CID, VID):
+        self.CID = CID
+        self.VID = VID
+    
+    def __ne__(self, other):
+        return (self.CID!=other.CID or self.VID!=other.VID)
+
+    def __eq__(self, other):
+        return (self.CID==other.CID and self.VID==other.VID)
+    
+    def __repr__(self):
+        return f'CID: {self.CID} VID: {self.VID}'
+
+    def __hash__(self):
+        return hash(str(self.CID)+","+str(self.VID))
+
+
 TRAN=0
-procSetOld = set([1, 2, 3])
+procSetOld = set()
+procSetOld.add(procSetVal(-1, 1))
+procSetOld.add(procSetVal(-1, 2))
+#procSetOld.add(procSetVal(-1, 3))
 procSetNew = set()
 
 CID = -1
 VID = int(sys.argv[1])
-PORT = 5000+int(sys.argv[1])
+PORT = 5000+VID
 HOST = "127.0.0.1"
 #print(PORT, type(PORT))
 idCounter = 0 
@@ -92,14 +113,6 @@ def performOperation(msg):
             #print(FTQueue[id])
             return len(FTQueue[id])
 
-
-class procSetVal(object):
-    def __init__(self, CID, VID):
-        self.CID = CID
-        self.VID = VID
-    
-    def __eq__(self, other):
-        return (self.CID==other.CID and self.VID==other.VID)
 
 class Message(object):
     def __init__(self, GS, GSReq, mId, OP, clAddr, sendAddr, FTQ={}):
