@@ -17,7 +17,8 @@ TRAN=0
 procSetOld = set([1, 2, 3])
 procSetNew = set()
 
-
+CID = -1
+VID = int(sys.argv[1])
 PORT = 5000+int(sys.argv[1])
 HOST = "127.0.0.1"
 #print(PORT, type(PORT))
@@ -92,15 +93,23 @@ def performOperation(msg):
             return len(FTQueue[id])
 
 
+class procSetVal(object):
+    def __init__(self, CID, VID):
+        self.CID = CID
+        self.VID = VID
+    
+    def __eq__(self, other):
+        return (self.CID==other.CID and self.VID==other.VID)
 
 class Message(object):
-    def __init__(self, GS: int, GSReq: int, mId: int, OP: int, clAddr: str, sendAddr: str):
+    def __init__(self, GS, GSReq, mId, OP, clAddr, sendAddr, FTQ={}):
         self.GS = GS
         self.GSReq = GSReq
         self.mId = mId
         self.OP = OP
         self.clAddr = clAddr
         self.sendAddr = sendAddr
+        self.FTQ = FTQ
 
     def __repr__(self):
         return f'Message- \n\tGS:{self.GS}, \n\tmId:{self.mId}, \n\tOP:{self.OP}, \n\tclAddr:{self.clAddr}, \n\tsendAddr:{self.sendAddr}'
@@ -140,21 +149,19 @@ def thread7000(): #transition logic
             print("TRANSITION:", int(sys.argv[1]))
             #remaining transition logic
 
-
-
-
-
-
-
 def thread8000(): #send alive messages
+    global CID
+    global VID
     HOST = "127.0.0.1"
     aliveSenderPORT = 8000+int(sys.argv[1]) 
     while True:
-        aliveMessage = Message(-1, -1, -1, -1, [], str(HOST)+":"+str(aliveSenderPORT))
+        aliveMessage = Message(CID, VID, -1, -1, [], str(HOST)+":"+str(aliveSenderPORT))
         broadcast(aliveMessage, level=9000)
         time.sleep(.2) #send alive every 200 milliseconds
 
 def thread9000(): #receive alive/transition message
+    global CID
+    global VID
     global TRAN
     aliveReceiverPORT = 9000+int(sys.argv[1]) 
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
@@ -162,12 +169,13 @@ def thread9000(): #receive alive/transition message
     server.bind((HOST, aliveReceiverPORT)) 
     print("Listening for Alive Messages\n") 
     while True:
-        procSetNew.add(int(sys.argv[1]))
+        procSetNew.add(procSetVal(CID, VID))
         data, addr = server.recvfrom(1024) 
         msg = pickle.loads(data)
-        if msg.GS==-1: #alive message
+        if msg.GS!=-2: #alive message
             sender = msg.sendAddr
-            procSetNew.add(int(sender.split(":")[1])%10)
+            procSetNew.add(procSetVal(msg.GS, msg.GSReq))
+            # procSetNew.add(int(sender.split(":")[1])%10)
             #print(procSetNew)
         else:   #transition message
             print("Transition message received")
