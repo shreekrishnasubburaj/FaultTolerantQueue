@@ -13,8 +13,8 @@ if len(sys.argv) < 2:
     print("Usage: python multisocketserver.py SERVER_NUMBER")
     sys.exit()
 
-TRAN =  0
-procSetOld = set()
+TRAN=0
+procSetOld = set([1, 2, 3])
 procSetNew = set()
 
 
@@ -122,36 +122,55 @@ def broadcast(msg=dummy, level=5000):
         sendOperation(addr, port, msg)
 
 def thread7000(): #transition logic
-    if TRAN==0:
-        if procSetOld!=procSetNew:
-            transitionMessage = Message(-2, -1, -1, -1, null, str(HOST)+":"+str(aliveSenderPORT))
-            broadcast(transitionMessage, level=9000)
+    aliveSenderPORT = 8000+int(sys.argv[1])
+    global TRAN
+    while True:
+        if TRAN==0:
+            time.sleep(5)
+            print(procSetOld, end='')
+            print(procSetNew)
+            if procSetOld!=procSetNew:
+                transitionMessage = Message(-2, -1, -1, -1, [], str(HOST)+":"+str(aliveSenderPORT))
+                broadcast(transitionMessage, level=9000)
+            else:
+                time.sleep(2)
+                procSetNew.clear()
         else:
             time.sleep(2)
-    else:
-        time.sleep(2)
-        #remaining transition logic
+            print("TRANSITION:", int(sys.argv[1]))
+            #remaining transition logic
+
+
+
+
+
+
 
 def thread8000(): #send alive messages
+    HOST = "127.0.0.1"
     aliveSenderPORT = 8000+int(sys.argv[1]) 
     while True:
-        aliveMessage = Message(-1, -1, -1, -1, null, str(HOST)+":"+str(aliveSenderPORT))
+        aliveMessage = Message(-1, -1, -1, -1, [], str(HOST)+":"+str(aliveSenderPORT))
         broadcast(aliveMessage, level=9000)
         time.sleep(.2) #send alive every 200 milliseconds
 
 def thread9000(): #receive alive/transition message
+    global TRAN
     aliveReceiverPORT = 9000+int(sys.argv[1]) 
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
     # server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     server.bind((HOST, aliveReceiverPORT)) 
     print("Listening for Alive Messages\n") 
     while True:
+        procSetNew.add(int(sys.argv[1]))
         data, addr = server.recvfrom(1024) 
         msg = pickle.loads(data)
         if msg.GS==-1: #alive message
             sender = msg.sendAddr
             procSetNew.add(int(sender.split(":")[1])%10)
+            #print(procSetNew)
         else:   #transition message
+            print("Transition message received")
             TRAN = 1
     server.close() 
 
@@ -211,58 +230,68 @@ def Main():
     global GS
     global n
     global pid
+    global TRAN
     #print_lock.acquire() 
     t6000 = threading.Thread(target=thread6000, args=())
     t6000.start()
     t5000 = threading.Thread(target=thread5000, args=())
     t5000.start()
+    t7000 = threading.Thread(target=thread7000, args=())
+    t7000.start()
+    t8000 = threading.Thread(target=thread8000, args=())
+    t8000.start()
+    t9000 = threading.Thread(target=thread9000, args=())
+    t9000.start()
     totalorder = []
     while True:
         if buffer1:
-            nextMsg = heapq.heappop(buffer1)
-            print(nextMsg) 
-            if nextMsg.GS==-2: #NACK
-                for msg in buffer2:
-                    if msg.GS==nextMsg.GSReq:
-                        addr = nextMsg.sendAddr.split(":")[0]
-                        port = int(nextMsg.sendAddr.split(":")[1])
-                        sendOperation(addr, port ,msg) #send msg to requesting server
-            elif nextMsg.GS==-1: #Sequencer needs to set GS
-                if (nextMsg.mId%n)+1==(pid%10):
-                    newMsg = Message(GS+1, -1, nextMsg.mId, nextMsg.OP, nextMsg.clAddr, str(HOST)+":"+str(PORT))
-                    buffer2.append(newMsg)
-                    broadcast(newMsg)        
-            else: #normal message
-                if nextMsg.GS<=GS: #duplicate
-                    continue
-                elif nextMsg.GS==GS+1: #in-order
-                    totalorder.append([GS+1, nextMsg.OP])
-                    result = -2
-                    result = performOperation(nextMsg)
-                    GS+=1
-                    for l in totalorder:
-                        print(l)
-                    if (nextMsg.mId%n)+1==pid%10:
-		        #Send result to client
-                        addr = nextMsg.clAddr.split(":")[0]
-                        port = int(nextMsg.clAddr.split(":")[1])
-                        sock.sendto(pickle.dumps(result), (addr, port))
-                    while buffer3 and buffer3[0].GS==GS+1:
-                        nextMsg = heapq.heappop(buffer3)
-                        print("**********")
-                        print(nextMsg)
-                        print("**********")
+            if TRAN==0:
+                nextMsg = heapq.heappop(buffer1)
+                print(nextMsg) 
+                if nextMsg.GS==-2: #NACK
+                    for msg in buffer2:
+                        if msg.GS==nextMsg.GSReq:
+                            addr = nextMsg.sendAddr.split(":")[0]
+                            port = int(nextMsg.sendAddr.split(":")[1])
+                            sendOperation(addr, port ,msg) #send msg to requesting server
+                elif nextMsg.GS==-1: #Sequencer needs to set GS
+                    if (nextMsg.mId%n)+1==(pid%10):
+                        newMsg = Message(GS+1, -1, nextMsg.mId, nextMsg.OP, nextMsg.clAddr, str(HOST)+":"+str(PORT))
+                        buffer2.append(newMsg)
+                        broadcast(newMsg)        
+                else: #normal message
+                    if nextMsg.GS<=GS: #duplicate
+                        continue
+                    elif nextMsg.GS==GS+1: #in-order
                         totalorder.append([GS+1, nextMsg.OP])
-                        performOperation(nextMsg)
+                        result = -2
+                        result = performOperation(nextMsg)
                         GS+=1
                         for l in totalorder:
                             print(l)
-                else: #out-of-order
-                    heapq.heappush(buffer3, nextMsg)
-                    #create NAC and send to seq
-                    Nackmsg = Message(-2, GS+1, 1234, [-1, -2, -3], "127.0.0.1", str(HOST)+":"+str(PORT))
-                    broadcast(Nackmsg)
-
+                        if (nextMsg.mId%n)+1==pid%10:
+                            #Send result to client
+                            addr = nextMsg.clAddr.split(":")[0]
+                            port = int(nextMsg.clAddr.split(":")[1])
+                            sock.sendto(pickle.dumps(result), (addr, port))
+                        while buffer3 and buffer3[0].GS==GS+1:
+                            nextMsg = heapq.heappop(buffer3)
+                            print("**********")
+                            print(nextMsg)
+                            print("**********")
+                            totalorder.append([GS+1, nextMsg.OP])
+                            performOperation(nextMsg)
+                            GS+=1
+                            for l in totalorder:
+                                print(l)
+                    else: #out-of-order
+                        heapq.heappush(buffer3, nextMsg)
+                        #create NAC and send to seq
+                        Nackmsg = Message(-2, GS+1, 1234, [-1, -2, -3], "127.0.0.1", str(HOST)+":"+str(PORT))
+                        broadcast(Nackmsg)
+            else:
+                print("Messaging Suspended")
+                time.sleep(2)
 
 if __name__ == '__main__': 
     Main() 
