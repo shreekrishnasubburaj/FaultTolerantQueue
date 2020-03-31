@@ -161,6 +161,16 @@ def thread7000(): #transition logic
             time.sleep(2)
             print("TRANSITION:", int(sys.argv[1]))
             #remaining transition logic
+            if lowest:
+
+
+
+	    else:
+
+
+
+
+
 
 def thread8000(): #send alive messages
     global CID
