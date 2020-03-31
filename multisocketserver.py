@@ -9,6 +9,7 @@ import sys
 import random
 import time
 import heapq
+
 if len(sys.argv) < 2:
     print("Usage: python multisocketserver.py SERVER_NUMBER")
     sys.exit()
@@ -22,7 +23,7 @@ class procSetVal(object):
         return (self.CID!=other.CID or self.VID!=other.VID)
 
     def __eq__(self, other):
-        return (self.CID==other.CID and self.VID==other.VID)
+        return ((self.CID == other.CID) and (self.VID == other.VID))
     
     def __repr__(self):
         return f'CID: {self.CID} VID: {self.VID}'
@@ -30,11 +31,13 @@ class procSetVal(object):
     def __hash__(self):
         return hash(str(self.CID)+","+str(self.VID))
 
+    def __lt__(self, other):
+        return (self.VID < other.VID) 
 
 TRAN=0
 procSetOld = set()
-procSetOld.add(procSetVal(-1, 1))
-procSetOld.add(procSetVal(-1, 2))
+#procSetOld.add(procSetVal(-1, 1))
+#procSetOld.add(procSetVal(-1, 2))
 #procSetOld.add(procSetVal(-1, 3))
 procSetNew = set()
 
@@ -115,7 +118,7 @@ def performOperation(msg):
 
 
 class Message(object):
-    def __init__(self, GS, GSReq, mId, OP, clAddr, sendAddr, FTQ={}):
+    def __init__(self, GS, GSReq, mId, OP, clAddr, sendAddr, FTQ={}, labelIdMap={}, idCounter=0):
         self.GS = GS
         self.GSReq = GSReq
         self.mId = mId
@@ -123,6 +126,8 @@ class Message(object):
         self.clAddr = clAddr
         self.sendAddr = sendAddr
         self.FTQ = FTQ
+        self.labelIdMap = labelIdMap
+        self.idCounter = idCounter
 
     def __repr__(self):
         return f'Message- \n\tGS:{self.GS}, \n\tmId:{self.mId}, \n\tOP:{self.OP}, \n\tclAddr:{self.clAddr}, \n\tsendAddr:{self.sendAddr}'
@@ -138,13 +143,31 @@ def sendOperation(addr="127.0.0.1", port=5000, msg=dummy):
     sock.sendto(pickle.dumps(msg), (addr, port))
 
 def broadcast(msg=dummy, level=5000):
-    for i in range(1,n+1):
+    if len(procSetOld) == 0:
+        n = 10
+    else:
+        n = len(procSetOld)
+    for i in range(1, n+1):
         port = level+i
         addr = "127.0.0.1"
         sendOperation(addr, port, msg)
 
 def thread7000(): #transition logic
-    aliveSenderPORT = 8000+int(sys.argv[1])
+    global FTQueue
+    global labelIdMap
+    global idCounter
+    global CID
+    global VID
+    global GS
+    global procSetNew
+    global procSetOld
+    HOST = "127.0.0.1"
+    transitionLogicPORT = 10000+VID #CC, queueMsg, queueMsgFinal
+    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+    # server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    server.bind((HOST, transitionLogicPORT))
+    server.settimeout(4)
+
     global TRAN
     while True:
         if TRAN==0:
@@ -152,41 +175,98 @@ def thread7000(): #transition logic
             print(procSetOld, end='')
             print(procSetNew)
             if procSetOld!=procSetNew:
-                transitionMessage = Message(-2, -1, -1, -1, [], str(HOST)+":"+str(aliveSenderPORT))
+                transitionMessage = Message(-2, -1, -1, -1, [], str(HOST)+":"+str(transitionLogicPORT))
+                sendOperation(HOST, 9000+VID, transitionMessage) 
                 broadcast(transitionMessage, level=9000)
             else:
-                time.sleep(2)
                 procSetNew.clear()
+                procSetNew.add(procSetVal(CID, VID))
+                time.sleep(2)
         else:
             time.sleep(2)
-            print("TRANSITION:", int(sys.argv[1]))
-            #remaining transition logic
-            if lowest:
+            print("TRANSITION:", VID)
+            
+            if min(procSetNew).VID==VID:
+                time.sleep(2.5)
+                for i in range(1, len(procSetNew)+1):
+                    ccMsg = Message(CID+1, i+1, -1, -1, "", HOST+":"+str(10000+VID))
+                    sendOperation(HOST, 10000+i+1, ccMsg)
+                VID=1
+                CID+=1
+                queueMessages = []
+                #procSetNew.clear()
+                if len(procSetNew) != 1:
+                    for i in range(1, len(procSetNew)+1):
+                        try:
+                            data = server.recv(1024)
+                            queueMessages.append(pickle.loads(data))
+                        except socket.timeout:    
+                            procSetNew.clear()
+                            procSetNew.add(procSetVal(CID, VID))
+                            continue
+                    maxi = -1
+                else:
+                    CID-=1
+                final = Message(GS, -1, -1, -1, "", HOST+":"+str(10000+VID), FTQueue, labelIdMap, idCounter)
+                for l in (queueMessages):
+                    if maxi < l.GS:
+                        maxi = l.GS
+                        final = l
+                for i in range(1, len(procSetNew)+1):
+                    sendOperation(HOST, 10000+i+1, final)
+                queueFinalMsg = final
+                print("yo")
+	    
+            else:
+                try:
+                    ccMsg = pickle.loads(server.recv(1024))
+                except socket.timeout: # 3 seconds timeout
+                    procSetNew.clear()
+                    procSetNew.add(procSetVal(CID, VID))
+                    continue
+                CID = ccMsg.GS
+                VID = ccMsg.GSReq
+                queueMessage = Message(GS, -1, -1, -1, "", HOST+":"+str(transitionLogicPORT), FTQueue, labelIdMap, idCounter)
+                sendOperation(HOST, int(ccMsg.sendAddr.split(":")[1]), queueMessage)
+
+                try:
+                    data = server.recv(1024)
+                    queueFinalMsg = pickle.loads(data)
+                except server.timeout: # 3 seconds timeout
+                    procSetNew.clear()
+                    procSetNew.add(procSetVal(CID, VID))
+                    continue
 
 
-
-	    else:
-
-
-
-
-
+            FTQueue = queueFinalMsg.FTQ.copy()
+            labelIdMap = queueFinalMsg.labelIdMap.copy()
+            idCounter = queueFinalMsg.idCounter
+            GS = queueFinalMsg.GS            
+            procSetOld = procSetNew.copy()
+            procSetNew.clear()
+            procSetNew.add(procSetVal(CID, VID))
+            time.sleep(1)
+            print("TRansition complete")
+            TRAN = 0
+    server.close()
 
 def thread8000(): #send alive messages
     global CID
     global VID
     HOST = "127.0.0.1"
-    aliveSenderPORT = 8000+int(sys.argv[1]) 
+    aliveSenderPORT = 8000+VID 
     while True:
         aliveMessage = Message(CID, VID, -1, -1, [], str(HOST)+":"+str(aliveSenderPORT))
         broadcast(aliveMessage, level=9000)
         time.sleep(.2) #send alive every 200 milliseconds
 
 def thread9000(): #receive alive/transition message
+    global procSetNew
     global CID
     global VID
     global TRAN
-    aliveReceiverPORT = 9000+int(sys.argv[1]) 
+    HOST = "127.0.0.1"
+    aliveReceiverPORT = 9000+VID 
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
     # server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     server.bind((HOST, aliveReceiverPORT)) 
@@ -209,7 +289,7 @@ def thread9000(): #receive alive/transition message
 # thread Client function 
 def thread6000(): 
     CHOST = "127.0.0.1" 
-    CPORT = 6000+int(sys.argv[1]) 
+    CPORT = 6000+VID 
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
     # server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     server.bind((CHOST, CPORT)) 
