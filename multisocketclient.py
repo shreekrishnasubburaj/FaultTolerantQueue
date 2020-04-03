@@ -48,7 +48,7 @@ def Main():
     for l in msgList:
        message = l
        PORT += 1
-       client.sendto(pickle.dumps(message), (HOST, PORT%3+6001)) 
+       client.sendto(pickle.dumps(message), (HOST, 6001)) 
        data = client.recv(1024) 
        print('Received from the server :', pickle.loads(data)) 
        #time.sleep(2)

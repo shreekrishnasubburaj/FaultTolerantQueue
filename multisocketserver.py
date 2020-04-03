@@ -195,13 +195,14 @@ def thread7000(): #transition logic
     while True:
         if TRAN==0:
             #time.sleep(5)
-            print(procSetOld, end='')
-            print(procSetNew)
             if procSetOld!=procSetNew:
                 transitionMessage = Message(-2, -1, -1, -1, [], str(HOST)+":"+str(transitionLogicPORT))
                 sendOperation(HOST, 9000+VID, transitionMessage) 
                 broadcast(transitionMessage, level=9000)
+                print(procSetOld, end='')
+                print(procSetNew)
             else:
+                print("Convergence achieved. System Stable with ", len(procSetNew), " peers")
                 procSetNew.clear()
                 procSetNew.add(procSetVal(CID, VID))
                 time.sleep(2)
@@ -249,9 +250,10 @@ def thread7000(): #transition logic
                 #    procSetNew.clear()
                 #    procSetNew.add(procSetVal(CID, VID))
                 #    continue
+                print("Waiting for Leader...")
                 while len(boofer1) == 0:
                     time.sleep(.5)
-                    print("boofer1 empty")
+                    #print("boofer1 empty")
                 ccMsg = boofer1.pop()
                 CID = ccMsg.GS
                 VID = ccMsg.GSReq
@@ -261,7 +263,7 @@ def thread7000(): #transition logic
 
                 while len(boofer2) == 0:
                     time.sleep(.5)
-                    print("boofer2 empty")
+                    #print("boofer2 empty")
                 queueFinalMsg = boofer2.pop()
                 boofer2.clear()
                 #try:
@@ -337,19 +339,20 @@ def thread9000(): #receive alive/transition message
 # thread Client function 
 def thread6000(): 
     global clientPORT
+    global serverPORT
     global server6000
     global TRAN
     print("Server port open at", clientPORT) 
     while True: 
-        if TRAN == 1:
-            server6000.close()
-            while(TRAN == 1):
-                pass
-        if TRAN == 0:
-            #server6000.close()
-            clientPORT = 6000+VID 
-            server6000 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-            server6000.bind((HOST, clientPORT))         
+        #if TRAN == 1:
+        #    server6000.close()
+        #    while(TRAN == 1):
+        #        pass
+        #if TRAN == 0:
+        #    #server6000.close()
+        #    clientPORT = 6000+VID 
+        #    server6000 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+        #    server6000.bind((HOST, clientPORT))         
         print("Listening for Client Requests\n") 
         data, addr = server6000.recvfrom(1024) 
         print("Request Recieved from ", addr)
@@ -364,7 +367,7 @@ def thread6000():
             msg.Req = -1
             msg.mId = msg.mId
             msg.clAddr = str(str(addr[0])+":"+str(addr[1]))
-            msg.sendAddr = str(str(HOST)+":"+str(PORT))
+            msg.sendAddr = str(str(HOST)+":"+str(serverPORT))
             broadcast(msg)
             #server.sendto(pickle.dumps("ACK\n"), addr)
               
@@ -378,15 +381,15 @@ def thread5000():
     global TRAN
     print("Server port open at", serverPORT) 
     while True:
-        if TRAN == 1:
-            server5000.close()
-            while(TRAN == 1):
-                pass
-        if TRAN == 0:
-            #server5000.close()
-            serverPORT = 5000+VID
-            server5000 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-            server5000.bind((HOST, serverPORT)) 
+        #if TRAN == 1:
+        #    server5000.close()
+        #    while(TRAN == 1):
+        #        pass
+        #if TRAN == 0:
+        #    #server5000.close()
+        #    serverPORT = 5000+VID
+        #    server5000 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+        #    server5000.bind((HOST, serverPORT)) 
         print("Listening for Peer Server Requests\n") 
         data, addr = server5000.recvfrom(1024) 
         if not data:
@@ -405,6 +408,7 @@ def Main():
     global GS
     global n
     global TRAN
+    global procSetOld
     #print_lock.acquire() 
     t6000 = threading.Thread(target=thread6000, args=())
     t6000.start()
@@ -422,6 +426,7 @@ def Main():
     while True:
         if buffer1:
             if TRAN==0:
+                n = len(procSetOld)
                 nextMsg = heapq.heappop(buffer1)
                 print(nextMsg) 
                 if nextMsg.GS==-2: #NACK
@@ -432,7 +437,7 @@ def Main():
                             sendOperation(addr, port ,msg) #send msg to requesting server
                 elif nextMsg.GS==-1: #Sequencer needs to set GS
                     if (nextMsg.mId%n)+1==(serverPORT%10):
-                        newMsg = Message(GS+1, -1, nextMsg.mId, nextMsg.OP, nextMsg.clAddr, str(HOST)+":"+str(PORT))
+                        newMsg = Message(GS+1, -1, nextMsg.mId, nextMsg.OP, nextMsg.clAddr, str(HOST)+":"+str(serverPORT))
                         buffer2.append(newMsg)
                         broadcast(newMsg)        
                 else: #normal message
@@ -463,7 +468,7 @@ def Main():
                     else: #out-of-order
                         heapq.heappush(buffer3, nextMsg)
                         #create NAC and send to seq
-                        Nackmsg = Message(-2, GS+1, 1234, [-1, -2, -3], "127.0.0.1", str(HOST)+":"+str(PORT))
+                        Nackmsg = Message(-2, GS+1, 1234, [-1, -2, -3], "127.0.0.1", str(HOST)+":"+str(serverPORT))
                         broadcast(Nackmsg)
             else:
                 print("Messaging Suspended")
